@@ -101,7 +101,7 @@ function confirmationEmail({ name, serviceType }) {
       <p style="font-size:13px;color:#555;line-height:1.7;margin:0 0 14px;">
         Your trial task only begins after a 15–20 min discovery call. Book your slot now to lock in your spot.
       </p>
-      <a href="https://calendly.com/mustarddigitals" style="display:inline-block;background:#D4A017;color:#1F1F1F;font-weight:700;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">
+      <a href="https://calendly.com/mustarddigitalsolutions/30min" style="display:inline-block;background:#D4A017;color:#1F1F1F;font-weight:700;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">
         Book Discovery Call →
       </a>
     </div>
