@@ -61,20 +61,36 @@ router.post('/', async (req, res) => {
     notes:            notes.trim(),
   });
 
-  await Promise.allSettled([
+  const [teamResult, clientResult] = await Promise.allSettled([
     resend.emails.send({
       from:    FROM_EMAIL,
       to:      TEAM_EMAIL,
-      subject: `🎯 New Free Trial Request — ${businessName} (${serviceType})`,
+      subject: `New Free Trial Request — ${businessName} (${serviceType})`,
       html:    teamEmail({ name, email, businessName, country, serviceType, taskDescription, expectedOutput, referenceLinks, notes }),
     }),
     resend.emails.send({
       from:    FROM_EMAIL,
       to:      email.trim(),
-      subject: '✅ We received your free trial request — MUSTARD Digitals',
+      subject: 'We received your free trial request — MUSTARD Digitals',
       html:    confirmationEmail({ name, serviceType }),
     }),
   ]);
+
+  // Fallback: if team notification failed, try Web3Forms
+  if (teamResult.status === 'rejected') {
+    const web3Key = process.env.WEB3FORMS_KEY;
+    if (web3Key) {
+      await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_key: web3Key,
+          subject:    `New Free Trial Request — ${businessName}`,
+          name, email, businessName, country, serviceType, taskDescription,
+        }),
+      }).catch(() => {});
+    }
+  }
 
   res.json({ success: true });
 });
