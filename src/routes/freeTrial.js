@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { Resend } from 'resend';
+import rateLimit from 'express-rate-limit';
 import { supabaseAdmin } from '../config/supabase.js';
 
 const router = Router();
@@ -7,6 +8,17 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const TEAM_EMAIL = process.env.TEAM_EMAIL || 'hello@mustarddigitals.com';
 const FROM_EMAIL = process.env.FROM_EMAIL  || 'noreply@mustarddigitals.com';
+
+// Max 3 submissions per IP per day
+const trialLimiter = rateLimit({
+  windowMs:        24 * 60 * 60 * 1000,
+  max:             3,
+  standardHeaders: true,
+  legacyHeaders:   false,
+  message:         { success: false, error: 'Too many submissions from this IP. Please try again tomorrow.' },
+});
+
+router.use(trialLimiter);
 
 router.post('/', async (req, res) => {
   const {
@@ -26,9 +38,20 @@ router.post('/', async (req, res) => {
 
   if (errors.length) return res.status(422).json({ success: false, errors });
 
+  // Block duplicate email submissions
+  const { data: existing } = await supabaseAdmin
+    .from('free_trial_submissions')
+    .select('id')
+    .eq('email', email.trim().toLowerCase())
+    .limit(1);
+
+  if (existing?.length) {
+    return res.status(409).json({ success: false, error: 'A trial request has already been submitted with this email address.' });
+  }
+
   await supabaseAdmin.from('free_trial_submissions').insert({
     name:             name.trim(),
-    email:            email.trim(),
+    email:            email.trim().toLowerCase(),
     business_name:    businessName.trim(),
     country:          country.trim(),
     service_type:     serviceType.trim(),
