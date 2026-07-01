@@ -65,13 +65,13 @@ router.post('/', async (req, res) => {
     resend.emails.send({
       from:    FROM_EMAIL,
       to:      TEAM_EMAIL,
-      subject: `New Free Trial Request — ${businessName} (${serviceType})`,
+      subject: `New Free Trial Request - ${businessName} (${serviceType})`,
       html:    teamEmail({ name, email, businessName, country, serviceType, taskDescription, expectedOutput, referenceLinks, notes }),
     }),
     resend.emails.send({
       from:    FROM_EMAIL,
       to:      email.trim(),
-      subject: 'We received your free trial request — MUSTARD Digitals',
+      subject: 'We received your free trial request - MUSTARD Digitals',
       html:    confirmationEmail({ name, serviceType }),
     }),
   ]);
@@ -85,7 +85,7 @@ router.post('/', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           access_key: web3Key,
-          subject:    `New Free Trial Request — ${businessName}`,
+          subject:    `New Free Trial Request - ${businessName}`,
           name, email, businessName, country, serviceType, taskDescription,
         }),
       }).catch(() => {});
@@ -111,10 +111,10 @@ function teamEmail({ name, email, businessName, country, serviceType, taskDescri
     ${row('Country', country)}
     ${row('Service', serviceType)}
     <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-    ${block('Task Description', taskDescription)}
-    ${expectedOutput ? block('Expected Output', expectedOutput) : ''}
+    ${block('Task Description', formatTextBlock(taskDescription))}
+    ${expectedOutput ? block('Expected Output', formatTextBlock(expectedOutput)) : ''}
     ${referenceLinks ? block('Reference Links', `<a href="${referenceLinks}" style="color:#D4A017;">${referenceLinks}</a>`) : ''}
-    ${notes ? block('Additional Notes', notes) : ''}
+    ${notes ? block('Additional Notes', formatTextBlock(notes)) : ''}
   </div>
   <div style="background:#fafafa;padding:20px 40px;border-top:1px solid #eee;font-size:11px;color:#999;text-align:center;">
     MUSTARD Digitals · mustarddigitals.com
@@ -136,7 +136,7 @@ function confirmationEmail({ name, serviceType }) {
       We received your free trial request for <strong>${serviceType}</strong>. Our team will review it shortly.
     </p>
     <div style="background:rgba(212,160,23,0.06);border:1px solid rgba(212,160,23,0.2);border-radius:12px;padding:20px 24px;margin-bottom:24px;">
-      <div style="font-size:13px;font-weight:700;color:#1F1F1F;margin-bottom:8px;">📅 Next Step — Book Your Discovery Call</div>
+      <div style="font-size:13px;font-weight:700;color:#1F1F1F;margin-bottom:8px;">📅 Next Step - Book Your Discovery Call</div>
       <p style="font-size:13px;color:#555;line-height:1.7;margin:0 0 14px;">
         Your trial task only begins after a 15–20 min discovery call. Book your slot now to lock in your spot.
       </p>
@@ -167,6 +167,60 @@ function block(label, value) {
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:6px;">${label}</div>
     <div style="font-size:13px;color:#333;line-height:1.7;background:#fafafa;border-radius:8px;padding:12px 14px;">${value}</div>
   </div>`;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatTextBlock(text) {
+  const lines = escapeHtml(text).split('\n');
+  let html = '';
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+
+    if (!line) {
+      html += '<div style="height:6px;"></div>';
+      i++;
+      continue;
+    }
+
+    // Numbered list: lines starting with "1." or "1)"
+    if (/^\d+[.)]\s/.test(line)) {
+      html += '<ol style="margin:6px 0 6px 18px;padding:0;">';
+      while (i < lines.length && /^\d+[.)]\s/.test(lines[i].trim())) {
+        const content = lines[i].trim().replace(/^\d+[.)]\s+/, '');
+        html += `<li style="font-size:13px;color:#333;line-height:1.7;margin-bottom:3px;">${content}</li>`;
+        i++;
+      }
+      html += '</ol>';
+      continue;
+    }
+
+    // Bullet list: lines starting with "* " or "- "
+    if (/^[*\-]\s/.test(line)) {
+      html += '<ul style="margin:6px 0 6px 18px;padding:0;">';
+      while (i < lines.length && /^[*\-]\s/.test(lines[i].trim())) {
+        const content = lines[i].trim().replace(/^[*\-]\s+/, '');
+        html += `<li style="font-size:13px;color:#333;line-height:1.7;margin-bottom:3px;">${content}</li>`;
+        i++;
+      }
+      html += '</ul>';
+      continue;
+    }
+
+    // Plain text line
+    html += `<p style="margin:0 0 6px;font-size:13px;color:#333;line-height:1.7;">${line}</p>`;
+    i++;
+  }
+
+  return html;
 }
 
 export default router;
